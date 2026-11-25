@@ -1,7 +1,7 @@
 # Próximos Passos — Retomada do Desenvolvimento
 
-> Atualizado em **24/11/2026**, depois da fusão do **PR #1** e com o branch `e2e-playwright` (PR #2) em preparação. Leia este arquivo inteiro
-> antes de continuar: estado do projeto, o que depende do usuário, o backlog e as armadilhas já encontradas.
+> Atualizado em **25/11/2026**, com o **PR #3** aberto. Leia este arquivo inteiro antes de continuar: estado do
+> projeto, o que depende do usuário, o backlog, as decisões e as armadilhas já encontradas.
 
 ---
 
@@ -9,14 +9,28 @@
 
 ```bash
 cd ~/projetos/sgc-redes-bvg
-git status && git log --oneline -8          # branch e2e-playwright (a partir de upstream/main)
-gh pr list -R cctrc-bvg/sgc-redes-bvg       # PRs abertos no original
-./scripts/dev.sh testar                     # esperado: typecheck ok + 392 testes passando
+git status && git log --oneline -6          # branch e2e-ampliado (a partir de upstream/main)
+gh pr view 3 -R cctrc-bvg/sgc-redes-bvg     # PR aberto: estado, revisão e CI
+./scripts/dev.sh testar                     # esperado: typecheck ok + 436 testes passando
 ```
 
 Para ver o sistema com dados: `./scripts/dev.sh dev` num banco de desenvolvimento com
-`npm run db:demo -- --confirmo` (usuários `@exemplo.edu.br`, senha `Demonstracao2026`). Regras e arquitetura:
-[CONTRIBUTING.md](../CONTRIBUTING.md) e [Guia do contribuidor](desenvolvimento/GUIA_DO_CONTRIBUIDOR.md).
+`npm run db:demo -- --confirmo` (usuários `@exemplo.edu.br`, senha `Demonstracao2026`; a `coordenacao@` também leciona).
+Regras e arquitetura: [CONTRIBUTING.md](../CONTRIBUTING.md) e [Guia do contribuidor](desenvolvimento/GUIA_DO_CONTRIBUIDOR.md).
+Fluxos de uso, com diagramas: [FLUXOS.md](FLUXOS.md). Requisitos e decisões: [FSD.md](FSD.md).
+
+**Armadilhas desta máquina (4 GB, Pentium N3700):**
+- Um processo pesado por vez: build (cerca de 1 a 3 min), E2E completo (15 a 20 min) e testes unitários não rodam juntos.
+- Prefixe com `nice -n 15 ionice -c 2 -n 7`; Vitest com `--maxWorkers 1`.
+- E2E: banco novo a cada rodada (`npx prisma dev stop/rm/-n sgc-teste -d`, depois `migrate deploy`, `db seed` e
+  `db:demo -- --confirmo`), com `DATABASE_URL=...&connection_limit=1&pgbouncer=true`,
+  `PLAYWRIGHT_HOST_PLATFORM_OVERRIDE=ubuntu24.04-x64` e `TMPDIR=~/.cache/sgc-tmp`.
+- A página de acessibilidade da Coordenação leva cerca de 2,5 min; logo após subir o servidor, o login pode demorar:
+  repita só aquela suíte antes de concluir que há erro.
+- Os scripts de produção (`scripts/atualizar.sh`, `scripts/ensaiar-migracao.sh`) só foram conferidos com `bash -n`:
+  esta máquina não tem Docker. O primeiro uso na VM deve ser acompanhado.
+- Não passe o Prettier em arquivos antigos: ele reformata o arquivo inteiro e polui o diff.
+- `.handoff/planilhas-exemplo/` tem nomes reais: nunca commitar nem copiar para testes.
 
 ---
 
@@ -24,60 +38,48 @@ Para ver o sistema com dados: `./scripts/dev.sh dev` num banco de desenvolviment
 
 **Repositórios:**
 - `origin` = fork `isaacmiranda/sgc-redes-bvg` (público, admin). `upstream` = `cctrc-bvg/sgc-redes-bvg` (original, só leitura).
-- **PR #1** (`minha-contribuicao` → `main`, versão inicial completa) foi **mesclado em 24/11/2026**, sem comentários.
-  `minha-contribuicao` está encerrado: trabalho novo sai de `upstream/main` num branch novo.
-- **PR #2** (`e2e-playwright` → `main`, aberto em 24/11/2026): E2E com Playwright no CI, `prisma.config.ts`, mensagens
-  prontas de PPI/PPE, guia de implantação, backup e saudações padrão. CI verde (`verificar` + `e2e` 18/18 no
-  `ubuntu-24.04`); aguarda revisão. Texto em `.handoff/github/pr-e2e-playwright.md`.
+- **PR #1** (versão inicial) e **PR #2** (E2E, mensagens de PPI/PPE, guia de implantação e backup) foram **mesclados em
+  24 e 25/11/2026**.
+- **PR #3** (`e2e-ampliado` → `main`), aberto em 25/11/2026, commits `84846c9` e `96fded8`: tela inicial nova, docência
+  acumulada ao cargo, revisão dos fluxos, ausência informada pelo docente, avaliações finais, produção segura, FSD e
+  estudo do login Google. CI do primeiro commit: verde. Texto em `.handoff/github/pr-e2e-ampliado.md` (local).
 - **Peça confirmação antes de cada push** (commits novos num branch com PR aberto entram no PR).
 
 **Pronto (Fases 1 e 2 do FSD + extras):**
-- Base: login/sessões, RBAC (5 perfis), auditoria, painel com pendências, Meu contato.
-- Cadastros: usuários, turmas, disciplinas (matriz do PPC), ofertas.
-- Operação:
-  - calendário acadêmico;
-  - grade (RF01) e sábados letivos;
-  - ausências e convites (RF02);
-  - alimentação (RF03/04);
-  - comunicação semiautomática por e-mail ou WhatsApp (RF05): textos-padrão, mensagem avulsa, grupos de docentes,
-    nutricionista, comunicar alterações da alimentação e do calendário.
-- Gestão: PPE/PEI (RF06), PPI (RF07), diários (RF08), processos SEI (RF09), relatórios.
-- Planilhas e PDF:
-  - importação com prévia: usuários, disciplinas, ofertas, grade, calendário, sábados;
-  - exportação .xlsx/.csv de todas as listagens;
-  - PDF do calendário, das grades, dos relatórios, do PEI e da ficha de PPI.
-- Documentação:
-  - Ajuda no sistema (`/ajuda`, 14 tópicos com capturas);
-  - `docs/MANUAL_DO_USUARIO.md` (gerado);
-  - CONTRIBUTING, guia do contribuidor, modelos de issue/PR;
-  - dados de demonstração (`prisma/demo.ts`).
+- Base: login/sessões, RBAC (5 perfis + docência acumulada), auditoria, tela inicial com prioridades, Meu contato.
+- Cadastros: usuários (com "Também leciona"), turmas, disciplinas (matriz do PPC), ofertas.
+- Operação: calendário acadêmico (avaliações finais fora dos dias letivos), grade e sábados letivos, ausências (período
+  de até 15 dias; o docente também informa a própria), convites, alimentação, comunicação semiautomática por e-mail ou
+  WhatsApp.
+- Gestão: PPE/PEI (com encontros realizados e avisos de prazo), PPI, diários, processos SEI, relatórios.
+- Planilhas e PDF: importação com prévia, exportação .xlsx/.csv, PDF do calendário, das grades, dos relatórios, do PEI
+  (modelo do campus, logo oficial) e da ficha de PPI.
+- Produção: `/api/saude`, healthcheck, limites, PostgreSQL ajustado, `atualizar.sh` com ensaio das migrações e volta
+  automática, política de migrações testada no CI, backups ao longo do dia no fim do semestre.
+- Documentação: Ajuda no sistema (14 tópicos, diagramas coloridos por responsável, com "Onde:"), manual gerado,
+  `FLUXOS.md`, `IMPLANTACAO.md` (dimensionamento medido), FSD com RNF01–RNF05 e decisões G15–G24.
 
-**Branch `e2e-playwright` (24/11/2026):**
-- **E2E com Playwright** em `e2e/` (`npm run e2e`), job `e2e` no CI com PostgreSQL de serviço + `db:demo`: login/sessão,
-  menus, acesso por perfil, mensagem avulsa e caixa de mensagem, importação com prévia, páginas por perfil, PPI/PPE.
-- **`prisma.config.ts`** no lugar de `package.json#prisma` (pronto para o Prisma 7); carrega o `.env` com
-  `process.loadEnvFile` sem sobrescrever o ambiente. Dockerfile copia o arquivo; `.dockerignore` exclui `.handoff`.
-- **Mensagens prontas de PPI e PPE:** `/ppi/[id]/comunicar` (deferida/indeferida → estudante e CTP; a decisão redireciona
-  para lá) e `/ppe/[id]/comunicar` (momento calculado: pedir modalidade ao docente; modalidade definida, PEI pronto com
-  cronograma e resultado → estudante e CTP). Textos puros em `src/lib/ppi/mensagens.ts` e `src/lib/ppe/mensagens.ts`.
-
-**Verificado em 24/11/2026 (PR #1):**
-- 380 testes unitários, typecheck e build;
-- roteiros E2E sem JS (16 roteiros em `.handoff/e2e`, local);
-- `docker compose up --build` com migração incremental sobre banco existente;
-- teste manual no navegador com JS, feito pelo usuário;
-- histórico do git sem dados reais: o branch foi reescrito em 24/11 para remover um telefone real dos testes.
+**Verificado em 25/11/2026:** 436 testes unitários, typecheck e build; E2E de 50 testes (48 na rodada completa e as
+duas falhas corrigidas e repetidas, mais os testes da Alimentação) num banco novo.
 
 ---
 
 ## 3. Pendências que dependem do usuário
 
-- [ ] **Acompanhar a revisão do PR #2** (o commit das saudações ainda precisa de push, com confirmação).
-- [ ] **Cadastrar em Comunicação** o e-mail institucional de cada grupo/setor, incluindo a nutricionista. Saudações
-      padrão (seed, só bancos novos): "prezados(as) …" no plural e "prezado(a) …" no singular.
-- [ ] **Configurar `APP_URL`** (https) no servidor de produção — ainda sem endereço definido (decisão de 24/11: fica para depois).
-- [ ] **VM de produção no Proxmox** (Docker Compose), com backups do PostgreSQL e HTTPS (proxy reverso).
+- [ ] **Acompanhar a revisão do PR #3** e o CI do segundo commit.
+- [ ] **Decisões abertas:**
+  - **G20–G22:** login Google institucional (`docs/estudos/SSO_GOOGLE.md`): adiado pelo usuário.
+  - **Reposição de aulas, diário aberto e prazo da avaliação final** (oportunidades do ROD, na seção 4).
+- [ ] **Com a TI (G17–G19 já aceitos: "o que for solicitado será concedido"):**
+  - pedir a VM (4 vCPU, 8 GB, 80 GB SSD), o endereço https (`APP_URL`) e o certificado;
+  - destino do backup fora da VM;
+  - monitoramento externo de `/api/saude`;
+  - HA do Proxmox, se houver armazenamento compartilhado.
+- [ ] **Cadastrar em Comunicação** o e-mail de cada grupo/setor (CAE, nutricionista, CTP, Gestão, líderes) e a CGP
+      (`cgp.boaviagem@ifce.edu.br`, já no texto das mensagens).
+- [ ] **Marcar "Também leciona"** em Usuários para quem acumula cargo e docência (Direção, CTP, AE), se houver.
 - [ ] Testar as planilhas de exemplo com dados reais (`.handoff/planilhas-exemplo/`, fora do git).
+- [ ] Logo: trocar o PNG pelo SVG oficial, se a Comunicação do IFCE fornecer.
 
 ---
 
@@ -85,32 +87,35 @@ Para ver o sistema com dados: `./scripts/dev.sh dev` num banco de desenvolviment
 
 ### P1 — próximos passos (em ordem)
 
-1. **PR #2 (`e2e-playwright`):** CI verde; acompanhar a revisão e corrigir em commits novos (push com confirmação).
-2. **Implantação em produção** (falta só o endereço): seguir `docs/IMPLANTACAO.md` — VM no Proxmox, Docker Compose,
-   proxy reverso com HTTPS, `APP_URL`, backup diário (`scripts/backup-banco.sh`) e teste de restauração.
-3. **Ampliar o E2E aos poucos** (branch `e2e-ampliado`, 24/11: +16 testes — exportação, turma, Meu contato,
-   calendário, ausência com convite, alimentação, diários; depois, cabeçalhos de segurança (CSP) e acessibilidade com
-   axe-core — e correção dos `<select>` que perdiam o valor após erro de validação). Os roteiros Python de `.handoff/e2e/` (sem JS, fora do git) cobrem mais regras que os
-   de fumaça; levar ao Playwright só o que depende do navegador. Nesta máquina (Ubuntu 26.04):
-   `PLAYWRIGHT_HOST_PLATFORM_OVERRIDE=ubuntu24.04-x64` e `TMPDIR=~/.cache/sgc-tmp`.
-4. **Prisma 7/8** (em 24/11/2026 o `latest` do npm já é o 8.0.0-rc; o 7 estável é o 7.10.1 — esperar o 8 estável, que
-   exige adaptador de driver e o gerador novo): o `prisma.config.ts` já existe; falta trocar `url = env(...)` do schema pela
-   configuração do datasource e testar com `./scripts/dev.sh docker`.
-5. ~~**Mensagens prontas de PPI/PPE:** validar os textos~~ — **validados em 25/11/2026** pelo usuário: mantidos assinatura,
-   ficha da PPI assinada na Coordenação, motivo do indeferimento ao estudante, nome + matrícula para a CTP, pedido ao
-   docente sem o nome do estudante, artigos do ROD também para o estudante, "aprovado(a)/não aprovado(a)/concluída" e
-   e-mail do estudante **não** guardado. Acrescentado o aviso de **prazo prorrogado** (estudante e CTP).
-6. ~~**Conferir o PEI impresso** com o modelo em papel do campus~~ — **feito em 25/11/2026**: impressão refeita no
-   modelo (`docs/referencias/modelo-pei-campus-boa-viagem.pdf`). Pendente só trocar o logo extraído do modelo pelo SVG
-   oficial da Comunicação (`public/marca/`).
+1. **PR #3:** acompanhar CI e revisão; corrigir em commits novos (push com confirmação).
+2. **Implantação em produção** (depende da TI e do endereço): seguir `docs/IMPLANTACAO.md`.
+   - Fazer o **primeiro uso acompanhado** de `./scripts/atualizar.sh` e `./scripts/ensaiar-migracao.sh`, que nunca
+     rodaram com Docker.
+   - Fazer o **teste de restauração** do backup e agendar o cron com 3 backups por dia.
+3. **Oportunidades do ROD** (sugestões, sem decisão pendente além do "sim"):
+   - prazo de reposição de aulas, 15 dias letivos ou o fim da etapa (Art. 37, § 2º): mostrar nas ausências com turma
+     dispensada e avisar na tela inicial;
+   - diário aberto por 7 dias letivos após a aula (Art. 43): lembrete ao docente antes de o registro fechar;
+   - avaliação final no mínimo 3 dias letivos após o registro da média parcial (Art. 105, § 1º): conferência ao
+     cadastrar o período de avaliações finais.
+4. **Diários por planilha:** importar a exportação do sistema acadêmico, em vez de digitar as aulas ministradas.
+   Precisa de um arquivo de exemplo, com dados fictícios ou anonimizados.
+5. **Login Google (SSO)**, quando o usuário decidir G20–G22 e a TI entregar as credenciais OAuth e o domínio: cerca de
+   2 dias de desenvolvimento (`docs/estudos/SSO_GOOGLE.md`).
+6. **Redefinição de senha por e-mail:** só com SMTP institucional; até lá, a Coordenação gera nova senha provisória.
+7. **Desempenho, se o log de consultas lentas apontar:** agrupar ou guardar em cache por 1 minuto as cerca de 25
+   contagens da tela inicial da Coordenação. Se o pico crescer, duas réplicas do app atrás do Caddy.
+8. **Prisma 7/8** (o `latest` do npm era o 8.0.0-rc em 24/11): esperar o 8 estável; o `prisma.config.ts` já existe.
+9. **Ampliar o E2E aos poucos:** levar ao Playwright só o que depende do navegador; os roteiros Python de
+   `.handoff/e2e/` (sem JS, fora do git) cobrem mais regras.
 
 ### P2 — depois
 
 - Integração com o SUAP (decidido: depois).
-- Envio automático pela Evolution API: o código existe, desligado (decidido: semiautomático).
+- Envio automático pela Evolution API: o código existe, desligado (decidido: semiautomático). O convite individual
+  seria o primeiro candidato.
 - **Fase 3 (FSD) — congelada (decisão de 25/11/2026):** laboratórios, estoque/DAP, atas e eventos ficam para
   implementação posterior; não iniciar sem nova decisão.
-- Menus `<details>` do cabeçalho: já fecham com JS (`FecharMenus`); sem JS continuam abertos ao navegar.
 
 ### Concluídos em 25/11/2026 (branch `e2e-ampliado`)
 
@@ -128,7 +133,7 @@ Para ver o sistema com dados: `./scripts/dev.sh dev` num banco de desenvolviment
 - **"Minha grade" para a Coordenação:** mantida (coordenador também leciona).
 - **Logo oficial:** `public/marca/ifce-vertical.png` substituído pela assinatura enviada pelo usuário (PNG; trocar por
   SVG se a Comunicação do IFCE fornecer).
-- **PR #3** (`e2e-ampliado`): abrir depois que o PR #2 for mesclado.
+- **PR #3** (`e2e-ampliado`): aberto em 25/11/2026, depois da fusão do PR #2.
 - **Infraestrutura e comunicação (pedido do usuário, 25/11/2026):**
   - Dimensionamento medido para o pico de fim de semestre: 4 vCPU, 8 GB, 80 GB SSD (`docs/IMPLANTACAO.md`, 1.1).
   - Atualização segura com `scripts/atualizar.sh` (backup, ensaio das migrações numa cópia, volta automática) e
@@ -141,20 +146,13 @@ Para ver o sistema com dados: `./scripts/dev.sh dev` num banco de desenvolviment
   CGP (`cgp.boaviagem@ifce.edu.br`) nas mensagens; G17–G19 aceitos (recursos da VM, janela de atualização, backups).
 - **Calendário (25/11/2026, G23):** avaliações finais sempre fora dos dias letivos e da grade, só no fim do ano
   (ROD, Art. 32), com aviso se cadastradas antes do último dia letivo. ROD guardado em `docs/referencias/rod-ifce.pdf`.
-- **Oportunidades do ROD (sugestões, ainda não implementadas):**
-  - prazo de reposição de aulas, 15 dias letivos ou o fim da etapa, o que vier primeiro (Art. 37, § 2º): mostrar o
-    prazo nas ausências com turma dispensada e avisar na tela inicial;
-  - diário aberto por 7 dias letivos após a aula (Art. 43): lembrete ao docente antes de o registro fechar;
-  - avaliação final no mínimo 3 dias letivos após o registro da média parcial (Art. 105, § 1º): conferência no
-    cadastro do período de avaliações.
-- **Próximo (depende de decisão):**
-  - login Google (G20–G22, adiado pelo usuário);
-  - duas réplicas do app atrás do Caddy, se o pico crescer.
+- **G24 aceito (25/11/2026):** refeições nos dias de avaliação final por acréscimo lançado pela Coordenação; a agenda
+  da AE mostra os acréscimos mesmo em dia sem aula.
+- **Oportunidades do ROD:** viraram itens do backlog (seção 4, P1, item 3).
 - **Análise dos fluxos** (pedido do usuário): `docs/FLUXOS.md` com diagramas por fluxo (responsável, tela e código)
   e a análise de gargalos. Feito: encontros do PEI, avisos de resultado e de lançamento da PPE, ausência por período (até
-  15 dias), preparação do ano na tela inicial, processos a vencer e semana compacta. Pendentes de decisão (com sugestão,
-  na seção 14 de FLUXOS.md): docente informar a própria ausência, importação das aulas ministradas e redefinição de
-  senha por e-mail.
+  15 dias), preparação do ano na tela inicial, processos a vencer e semana compacta. Pendentes (sugestões na seção 14 de
+  FLUXOS.md): importação das aulas ministradas (backlog 4) e redefinição de senha por e-mail (backlog 6).
 - **Cargo + docência** (pedido do usuário): quem tem cargo e leciona vê tudo junto, cargo em verde e docência em azul
   com rótulo; marca "Também leciona" no cadastro, ligada também ao receber disciplina pela planilha; só quem acumula vê
   as cores; agenda com Hoje + Minha semana e o mês recolhido. Feito — `User.leciona`, `acumulaDocencia` em
